@@ -19,13 +19,14 @@ You must have Perl 5.0 and later in order to use rsrc2rcp.
 
 The syntax for using rsrc2rcp is:
 
-    rsrc2rcp.pl [ -b | -p ] [ -n ] [ -F filename ] rsrc-file ...
+    rsrc2rcp.pl [ -b ] [ -P ] [ -p ] [ -n ] [ -F filename ] rsrc-file ...
     
 where
 
     -b              Create bitmaps in Windows .bmp format
-    -p              Create bitmaps in .pbitm text format (default)
-    -n              Bitmap filename uses resource name instead of ID
+    -p              Create bitmaps in .pbitm text format
+    -P              Create bitmaps in .pict format
+    -n              Bitmap filenames use resource name instead of ID
     -F filename     Use "filename" to create .rcp and .h file instead
                     of resource filename.
 

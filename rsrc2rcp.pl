@@ -150,10 +150,15 @@
 #
 #----------------------------------------------------------------------------
 #  Notes:
-#  
-#  1.  Only 1-bit bitmaps are supported.
 #
-#  2.  PICT pixmaps are still not supported at this time.
+#
+#  1.  Only 1-bit bitmaps are supported in the rcp and the exporting of bmp
+#      and pbitm formats. Use the '-P' option to export all greyscale or
+#      or color assets into individual .PICT files you can convert to other
+#      image formats using ImageMagick or other tools.
+#
+#  2.  PICT pixmaps are still not supported at this time in the rcp. You can
+#      export PICT files to individual files using the '-P' option.
 #        
 #  3.  The µMWC and vers resources appear to be CW-specific and are ignored.
 #
@@ -187,7 +192,7 @@
 # Debugging statements are enabled if non-zero. Output is sent to a .dbg file
 $debug = 1;
 
-$Version = "0.9";
+$Version = "0.10";
 $Copyright = "Copyright (c) 2022, Alvin Koh, Alexander Botkin";
 
 if ($#ARGV < 0) {
@@ -196,8 +201,10 @@ if ($#ARGV < 0) {
 }
 
 $filePrefix = "";	# Output file prefix
-$createBMPFlag = 0;	# Create .bmp file if 1 (default: create .pbitm)
-$useNameForBMPFlag = 0; # Use the name instead of the ID when naming a bitmap file
+$createPICTFlag = 0; # Create .pict files if 1
+$createBMPFlag = 0;	# Create .bmp file if 1
+$createPBITMFlag = 0; # Create .pbitm file if 1
+$useNameForBitmapsFlag = 0; # Use the name instead of the ID when naming an image file
 $cwidth = 50;		# this controls the width of the constant names
 					# in the .h file
 $date = localtime;	# used to timestamp the .rcp and .h files
@@ -227,18 +234,28 @@ for $arg (@ARGV) {
 	}
 
     if ($arg eq "-n") {
-        $useNameForBMPFlag = 1;
+        $useNameForBitmapsFlag = 1;
+        next;
+    }
+
+    if ($arg eq "-P") {
+        $createPICTFlag = 1;
         next;
     }
 	
 	# for completeness
 	if ($arg eq "-p") {
-		$createBMPFlag = 0;
+		$createPBITMFlag = 1;
 		next;
 	}
 	
 	# filenames
 	push(@rsrcFileList, $arg);
+}
+
+# If the user hasn't requested an explicit image format, default to .pbitm
+if (not( $createBMPFlag or $createPICTFlag or $createPBITMFlag )) {
+    $createPBITMFlag = 1;
 }
 
 if ($#rsrcFileList < 0) {
@@ -365,9 +382,17 @@ sub process_ICON
 	printf($rFile "ICON ID %d \"%s.%s\"\n\n", $rID, $rName, $createBMPFlag ? "bmp" : "pbitm");
 	print(DBG "    <<< Resource \'$rName\' ID $rID >>>\n");
 	&hexdump($rData, \*DBG);
+
+    # TODO: Alex - need to test this before enabling
+#    if ($createPICTFlag) {
+#        &writePICT("$rName.pict", $rData, 1);
+#    }
+
 	if ($createBMPFlag) {
 		&writeBMP("$rName.bmp", $rData, 32, 32, 4);
-	} else {
+	}
+
+    if ($createPBITMFlag) {
 		&writePalmBMP("$rName.pbitm", $rData, 32, 4);
 	}
 }
@@ -973,6 +998,35 @@ sub process_cicn
 	}
 }
 
+sub writePICT
+{
+    my ($filename, $rData, $addHeader) = @_;
+
+    # Write out the PICT file
+    local *pictFile;
+
+    open(pictFile, ">$filename.pict") || die "Can't create .pict file";
+    binmode(pictFile);
+
+    if ($addHeader) {
+        # Note: ImageMagick and other converters will expect PICT to have 512-byte
+        #  header as documented here: http://justsolve.archiveteam.org/wiki/PICT
+        #  It seems like the PICT files in the rsrc have the headers stripped so
+        #  this will add it back if requested.
+        #
+        #  To determine if your resource has the header stripped, the PICT version
+        #  code will be at byte offset 10 if no header and will be either "11 01"
+        #  for version 1 or "00 11 02 ff 0c 00" for version 2. If the version is
+        #  instead at byte offset 522, then you have the 512 header with all bytes
+        #  set to 0 already.
+        print pictFile pack("c512", '0');
+    }
+
+    print pictFile $rData;
+
+    close pictFile;
+}
+
 # pict (working partially)
 sub process_PICT
 {
@@ -985,6 +1039,17 @@ sub process_PICT
 	$rsrcType{"PICT.$rID"}--;
 	print(DBG "------ PICT $rID ($PICT_Name{$rID}) ------\n");
 	&hexdump($rData, \*DBG);
+
+    # Determine how we'll name the saved files
+    my $filename = "Tbmp$rID";
+    if ($useNameForBitmapsFlag) {
+        $filename = "$rName";
+    }
+
+    if ($createPICTFlag) {
+        &writePICT($filename, $rData, 1);
+    }
+
 	($pSize, $t, $l, $b, $r, $pVer, $rData) = unpack("n6a*", $rData);
 	printf(DBG "  PICT size = %d (0x%04x)\n", $pSize, $pSize);
 	printf(DBG "  PICT dim = %d x %d\n", $r-$l, $b-$t);
@@ -1040,15 +1105,11 @@ sub process_PICT
 				&hexdump($bmStream, \*DBG);
 			}
 
-            my $filename = "Tbmp$rID";
-            if ($useNameForBMPFlag) {
-                $filename = "$rName";
-            }
-
 			if ($createBMPFlag) {
 				print($rFile "BITMAP ID $rID \"$filename.bmp\"\n");
 				&writeBMP("$filename.bmp", $bmStream, $w, $h, $rowBytes & 0x7fff);
-			} else {
+			}
+            if ($createPBITMFlag) {
 				print($rFile "BITMAP ID $rID \"$filename.pbitm\"\n");
 				&writePalmBMP("$filename.pbitm", $bmStream, $h, $rowBytes & 0x7fff);
 			}			
@@ -1072,15 +1133,11 @@ sub process_PICT
 				&hexdump($bmStream, \*DBG);
 			}
 
-            my $filename = "Tbmp$rID";
-            if ($useNameForBMPFlag) {
-                $filename = "$rName";
-            }
-
 			if ($createBMPFlag) {
 				print($rFile "BITMAP ID $rID \"$filename.bmp\"\n");
 				&writeBMP("$filename.bmp", $bmStream, $w, $h, $rowBytes & 0x7fff);
-			} else {
+			}
+            if ($createPBITMFlag) {
 				print($rFile "BITMAP ID $rID \"$filename.pbitm\"\n");
 				&writePalmBMP("$filename.pbitm", $bmStream, $h, $rowBytes & 0x7fff);
 			}
@@ -1104,15 +1161,11 @@ sub process_PICT
 				&hexdump($bmStream, \*DBG);
 			}
 
-            my $filename = "Tbmp$rID";
-            if ($useNameForBMPFlag) {
-                $filename = "$rName";
-            }
-
 			if ($createBMPFlag) {
 				print($rFile "BITMAP ID $rID \"$filename.bmp\"\n");
 				&writeBMP("$filename.bmp", $bmStream, $w, $h, $rowBytes & 0x7fff);
-			} else {
+			}
+            if ($createPBITMFlag) {
 				print($rFile "BITMAP ID $rID \"$filename.pbitm\"\n");
 				&writePalmBMP("$filename.pbitm", $bmStream, $h, $rowBytes & 0x7fff);
 			}
@@ -1139,10 +1192,11 @@ sub help
 rsrc2rcp $Version
 $Copyright
 
-Usage:  rsrc2rcp [ -b | -p ] [ -n ] [ -F filePrefix ] rsrc-file ...
+Usage:  rsrc2rcp [ -b ] [ -P ] [ -p ] [ -n ] [ -F filePrefix ] rsrc-file ...
 
         -b                write bitmaps in .bmp format
-        -p                write bitmaps in .pbitm text format (default)
+        -p                write bitmaps in .pbitm text format
+        -P                write bitmaps in .pict format
         -n                bitmap filename uses resource name instead of ID
         -F filePrefix     filename prefix used for .rcp and .h files
 

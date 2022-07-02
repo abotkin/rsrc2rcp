@@ -1,5 +1,10 @@
 # Change Log:
 
+## 2 Jul 2022 - 0.10 - [Alexander Botkin](mailto:axb2@cornell.edu)
+- Added -P option to export bitmap files as PICT files. Includes header information to allow for easier conversion and usage with Preview, ImageMagick, etc.
+- The -n option also affects PICT files created with new option
+- Bitmap export options are no longer exclusive, can choose to export in all formats with one command.
+
 ## 1 Jul 2022 - 0.9 - [Alexander Botkin](mailto:axb2@cornell.edu)
 - Added -n option to have created bitmap files use the resource name rather than the ID. Useful for folks extracting resources for porting Palm games.
 
