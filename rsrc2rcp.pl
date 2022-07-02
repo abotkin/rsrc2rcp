@@ -62,6 +62,11 @@
 #----------------------------------------------------------------------------
 #  Change Log:
 #
+#    1 Jul 2022   0.9      Alexander Botkin <axb2@cornell.edu>
+#                          Added -n option to have created bitmap files use
+#                            the resource name rather than the ID. Useful for
+#                            folks extracting resources for porting Palm games.
+#
 #    14 Mar 2003  0.8      Alvin Koh <alvinkoh@mac.com>
 #                          Fixed MBAR processing. Pulldown menus were incorrect processed
 #                           as Menu Bars. Thanks to Edward Zadrozny and Russ Bernhardt for
@@ -182,8 +187,8 @@
 # Debugging statements are enabled if non-zero. Output is sent to a .dbg file
 $debug = 1;
 
-$Version = "0.8";
-$Copyright = "Copyright (c) 2001, Alvin Koh";
+$Version = "0.9";
+$Copyright = "Copyright (c) 2022, Alvin Koh, Alexander Botkin";
 
 if ($#ARGV < 0) {
 	&help();
@@ -192,6 +197,7 @@ if ($#ARGV < 0) {
 
 $filePrefix = "";	# Output file prefix
 $createBMPFlag = 0;	# Create .bmp file if 1 (default: create .pbitm)
+$useNameForBMPFlag = 0; # Use the name instead of the ID when naming a bitmap file
 $cwidth = 50;		# this controls the width of the constant names
 					# in the .h file
 $date = localtime;	# used to timestamp the .rcp and .h files
@@ -219,6 +225,11 @@ for $arg (@ARGV) {
 		$createBMPFlag = 1;
 		next;
 	}
+
+    if ($arg eq "-n") {
+        $useNameForBMPFlag = 1;
+        next;
+    }
 	
 	# for completeness
 	if ($arg eq "-p") {
@@ -1028,12 +1039,18 @@ sub process_PICT
 				print(DBG "      Bitmap stream\n");
 				&hexdump($bmStream, \*DBG);
 			}
+
+            my $filename = "Tbmp$rID";
+            if ($useNameForBMPFlag) {
+                $filename = "$rName";
+            }
+
 			if ($createBMPFlag) {
-				print($rFile "BITMAP ID $rID \"Tbmp$rID.bmp\"\n");
-				&writeBMP("Tbmp$rID.bmp", $bmStream, $w, $h, $rowBytes & 0x7fff);
+				print($rFile "BITMAP ID $rID \"$filename.bmp\"\n");
+				&writeBMP("$filename.bmp", $bmStream, $w, $h, $rowBytes & 0x7fff);
 			} else {
-				print($rFile "BITMAP ID $rID \"Tbmp$rID.pbitm\"\n");
-				&writePalmBMP("Tbmp$rID.pbitm", $bmStream, $h, $rowBytes & 0x7fff);
+				print($rFile "BITMAP ID $rID \"$filename.pbitm\"\n");
+				&writePalmBMP("$filename.pbitm", $bmStream, $h, $rowBytes & 0x7fff);
 			}			
 			last;
 		}			
@@ -1054,12 +1071,18 @@ sub process_PICT
 				print(DBG "      Bitmap stream\n");
 				&hexdump($bmStream, \*DBG);
 			}
+
+            my $filename = "Tbmp$rID";
+            if ($useNameForBMPFlag) {
+                $filename = "$rName";
+            }
+
 			if ($createBMPFlag) {
-				print($rFile "BITMAP ID $rID \"Tbmp$rID.bmp\"\n");
-				&writeBMP("Tbmp$rID.bmp", $bmStream, $w, $h, $rowBytes & 0x7fff);
+				print($rFile "BITMAP ID $rID \"$filename.bmp\"\n");
+				&writeBMP("$filename.bmp", $bmStream, $w, $h, $rowBytes & 0x7fff);
 			} else {
-				print($rFile "BITMAP ID $rID \"Tbmp$rID.pbitm\"\n");
-				&writePalmBMP("Tbmp$rID.pbitm", $bmStream, $h, $rowBytes & 0x7fff);
+				print($rFile "BITMAP ID $rID \"$filename.pbitm\"\n");
+				&writePalmBMP("$filename.pbitm", $bmStream, $h, $rowBytes & 0x7fff);
 			}
 			last;
 		}			
@@ -1080,12 +1103,18 @@ sub process_PICT
 				print(DBG "      Bitmap stream\n");
 				&hexdump($bmStream, \*DBG);
 			}
+
+            my $filename = "Tbmp$rID";
+            if ($useNameForBMPFlag) {
+                $filename = "$rName";
+            }
+
 			if ($createBMPFlag) {
-				print($rFile "BITMAP ID $rID \"Tbmp$rID.bmp\"\n");
-				&writeBMP("Tbmp$rID.bmp", $bmStream, $w, $h, $rowBytes & 0x7fff);
+				print($rFile "BITMAP ID $rID \"$filename.bmp\"\n");
+				&writeBMP("$filename.bmp", $bmStream, $w, $h, $rowBytes & 0x7fff);
 			} else {
-				print($rFile "BITMAP ID $rID \"Tbmp$rID.pbitm\"\n");
-				&writePalmBMP("Tbmp$rID.pbitm", $bmStream, $h, $rowBytes & 0x7fff);
+				print($rFile "BITMAP ID $rID \"$filename.pbitm\"\n");
+				&writePalmBMP("$filename.pbitm", $bmStream, $h, $rowBytes & 0x7fff);
 			}
 			last;
 		}			
@@ -1110,10 +1139,11 @@ sub help
 rsrc2rcp $Version
 $Copyright
 
-Usage:  rsrc2rcp [ -b | -p ] [ -F filePrefix ] rsrc-file ...
+Usage:  rsrc2rcp [ -b | -p ] [ -n ] [ -F filePrefix ] rsrc-file ...
 
         -b                write bitmaps in .bmp format
         -p                write bitmaps in .pbitm text format (default)
+        -n                bitmap filename uses resource name instead of ID
         -F filePrefix     filename prefix used for .rcp and .h files
 
 EOT
