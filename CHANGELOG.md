@@ -1,5 +1,8 @@
 # Change Log:
 
+## 1 Jul 2022 - 0.9 - [Alexander Botkin](mailto:axb2@cornell.edu)
+- Added -n option to have created bitmap files use the resource name rather than the ID. Useful for folks extracting resources for porting Palm games.
+
 ## 14 Mar 2003 - 0.8 - [Alvin Koh](mailto:alvinkoh@mac.com)
 - Fixed MBAR processing. Pulldown menus were incorrect processed as Menu Bars. Thanks to Edward Zadrozny and Russ Bernhardt for pointing this out.
 
